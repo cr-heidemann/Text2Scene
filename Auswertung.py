@@ -46,24 +46,24 @@ def doc(t):
 
 def save_tokens(path, liste):
     print(path)
-    f = open(path + "\\tokens.txt", "w")
+    f = open(path + "\\tokens.txt", "w",encoding="utf8")
     for token in liste:
         f.write(token.text + "\n")
 
 def save_pos(path, liste):
     print(path)
-    f = open(path + "\\pos.txt", "w")
+    f = open(path + "\\pos.txt", "w", encoding="utf8")
     for token in liste:
         f.write(token.pos_ + "\n")
     f.close()
-    f=open(path + "\\tokens_and_pos.txt", "w")
+    f=open(path + "\\tokens_and_pos.txt", "w", encoding="utf8")
     for token in liste:
         f.write(token.text + "  " + token.pos_ + "\n")
     f.close()
 
 def save_sentences(path, liste):
     print(path)
-    f = open(path + "\\sentences.txt", "w")
+    f = open(path + "\\sentences.txt", "w", encoding="utf8")
     sentences = [sent.text + "\n" for sent in liste.sents]
     for i in range(len(sentences)):
         f.write(sentences[i] + "\n")
@@ -116,11 +116,50 @@ def sentence_length(liste):
     counter_len.sort()
     counter_length=Counter(counter_len)
     dictionary = Counter(counter_len)
-    plt.bar(list(dictionary.keys()), dictionary.values(), color='red')
-    plt.xlabel('Anzahl Wörter')
-    plt.ylabel('Anzahl Vorkommen')
+    plt.bar(list(dictionary.keys()), dictionary.values(), color="blue")
+    plt.xlabel("Anzahl Wörter")
+    plt.ylabel("Anzahl Vorkommen")
     plt.show()
 
+def prepositions(way, liste):
+    s_id={}
+    qs_s=[]
+    o_s=[]
+    lines = open(way, "r", encoding="utf8").read().splitlines()
+    for line in range(len(lines)):
+        #if line contains <SPATIAL_SIGNAL, save id and text
+        if "<SPATIAL_SIGNAL" in lines[line]:
+            start= lines[line].find('id="') + len('id="')
+            end=lines[line].find('" start="')
+            key=lines[line][start:end]
+            start= lines[line].find('text="') + len('text="')
+            end=lines[line].find('" cluster="')
+            value=lines[line][start:end]
+            s_id[key]=value
+        if "<QSLINK" in lines[line]:
+            start= lines[line].find('trigger="') + len('trigger="')
+            end=lines[line].find('" comment="')
+            key=lines[line][start:end]
+            qs_s.append(key)
+        if "<OLINK" in lines[line]:
+            start= lines[line].find('trigger="') + len('trigger="')
+            end=lines[line].find('" frame_type="')
+            key=lines[line][start:end]
+            o_s.append(key)
+    qs_s[:] = [x for x in qs_s if x]
+    o_s[:] = [x for x in o_s if x]
+    # for each id in the lists, repalce it with value(text)
+    qs_s = [s_id.get(i, i) for i in qs_s]
+    qs_s=Counter(qs_s)
+    o_s = [s_id.get(i, i) for i in o_s]
+    o_s=Counter(o_s)
+    print(qs_s)
+    print(o_s)
+
+
+
+
+                   
 def do_this():
     choice=""
     way=""
@@ -139,21 +178,23 @@ def do_this():
     print("3")
     document = doc(all_text)
     print("4")
-    """
-    while choice !="NEIN":
+    
+    while choice !="NEIN" and choice !="JA":
         choice=input("Möchten Sie Ihre Ergebnisse abspeichern? JA NEIN")
         if choice=="JA":
             path=input("Geben Sie einen Speicherordner an:")
             save_tokens(path, document)
             save_pos(path, document)
-    """
+            save_sentences(path,document)
+    
     #counterpos=counter_pos(document)
     #print(counterpos)
     #counterios=counter_ios(document)
     #print(counterios)
     #counterqs=counter_qslink(document)
     #print(counterqs)
-    sentence_length(document)
+    #sentence_length(document)
+    prepositions(way, document)
     print("#################################################################################")
     print(document)
     
@@ -161,11 +202,12 @@ def do_this():
     
     
 
-
+# F:\Uni\14_SoSe_21\Praktikum Text2Scene\Traning\ANC\WhereToJapan\
+#F:\Uni\14_SoSe_21\Praktikum Text2Scene\Output
 
 do_this()
-#save dictionarry with x y or as nested list
-#how many words in sentence how often? x=length, y:how often 0-???
-#which links with which preposition
+
+#which links with which preposition: put all s in dict with text; make list for qs and olink with s_id; put corresponding value from dict in list, counter
+
 #top 5 motion verbs and how often
 
