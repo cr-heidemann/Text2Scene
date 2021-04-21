@@ -19,21 +19,26 @@ def open_folder(way):
     for x in os.walk(way):
         for y in glob.glob(os.path.join(x[0], '*.xml')):
             print(y)
-            result.append(y)
+            #result.append(y)
             file_input = open(y, "r", encoding="utf8")
+            lines = open(y, "r", encoding="utf8").read().splitlines()
+            print(lines)
+            result.append(lines)
             all_text+= file_input.read() + " "
-            all_text.replace("\n", " ")
-            #print(all_text)
-    return all_text
+            #all_text.replace("\n", " ")
+    #print(all_text)
+    return all_text, result
 
 def open_file(way):
     print(way)
     all_text=""
     file_input = open(way, "r", encoding="utf8")
+    lines = open(way, "r", encoding="utf8").read().splitlines()
+    result=[lines]
     all_text = file_input.read()
     all_text.replace("\n", " ")
     #print(all_text)
-    return all_text
+    return all_text, result
                 
 def doc(t):
     '''Tokenizer'''
@@ -43,6 +48,12 @@ def doc(t):
     """for token in doc:
         print(token.text)"""
     return doc
+
+def make_sentences(liste):
+    print(liste)
+    print(liste.sents)
+    sentences = [sent.text for sent in range(len(liste.sents))]
+    return sentences
 
 def save_tokens(path, liste):
     print(path)
@@ -64,7 +75,7 @@ def save_pos(path, liste):
 def save_sentences(path, liste):
     print(path)
     f = open(path + "\\sentences.txt", "w", encoding="utf8")
-    sentences = [sent.text + "\n" for sent in liste.sents]
+    sentences = make_sentences(liste)
     for i in range(len(sentences)):
         f.write(sentences[i] + "\n")
     f.close
@@ -121,63 +132,84 @@ def sentence_length(liste):
     plt.ylabel("Anzahl Vorkommen")
     plt.show()
 
-def prepositions(way, liste):
+def extract(liste, d, i,  s, e):
+    s= liste[d][i].find(s) + len(s)
+    e=liste[d][i].find(e)
+    word=liste[d][i][s:e]
+    return word
+
+def prepositions(sentences, liste):
     s_id={}
     qs_s=[]
     o_s=[]
-    lines = open(way, "r", encoding="utf8").read().splitlines()
-    for line in range(len(lines)):
+    lines = sentences
+    for doc in range(len(lines)):
+        for line in range(len(lines[doc])):
+        # each doc is list of string in list, so each string is a line
         #if line contains <SPATIAL_SIGNAL, save id and text
-        if "<SPATIAL_SIGNAL" in lines[line]:
+            """if "<SPATIAL_SIGNAL" in lines[line]:
             start= lines[line].find('id="') + len('id="')
             end=lines[line].find('" start="')
             key=lines[line][start:end]
             start= lines[line].find('text="') + len('text="')
             end=lines[line].find('" cluster="')
             value=lines[line][start:end]
-            s_id[key]=value
-        if "<QSLINK" in lines[line]:
-            start= lines[line].find('trigger="') + len('trigger="')
-            end=lines[line].find('" comment="')
-            key=lines[line][start:end]
-            qs_s.append(key)
-        if "<OLINK" in lines[line]:
-            start= lines[line].find('trigger="') + len('trigger="')
-            end=lines[line].find('" frame_type="')
-            key=lines[line][start:end]
-            o_s.append(key)
-    qs_s[:] = [x for x in qs_s if x]
-    o_s[:] = [x for x in o_s if x]
+            s_id[key]=value"""
+            if "<SPATIAL_SIGNAL" in lines[doc][line]:
+                key=extract(lines, doc, line, 'id="', '" start="')
+                value=extract(lines, doc, line, 'text="', '" cluster="')
+                s_id[key]=value
+            if "<QSLINK" in lines[doc][line]:
+                word=extract(lines, doc, line, 'trigger="', '" comment="')
+                qs_s.append(word)
+            if "<OLINK" in lines[doc][line]:
+                word=extract(lines,doc, line, 'trigger="', '" frame_type="')
+                o_s.append(word)
+    qs_s[:] = [i for i in qs_s if i]
+    o_s[:] = [i for i in o_s if i]
     # for each id in the lists, repalce it with value(text)
     qs_s = [s_id.get(i, i) for i in qs_s]
     qs_s=Counter(qs_s)
     o_s = [s_id.get(i, i) for i in o_s]
     o_s=Counter(o_s)
-    print(qs_s)
-    print(o_s)
+    return qs_s, o_s
 
-
-
+def motion(sentences, liste):
+    verbs=[]
+    lines = sentences
+    for doc in range(len(lines)):
+        for line in range(len(lines[doc])):
+            if "<MOTION id" in lines[doc][line]:
+                word=extract(lines, doc, line, 'text="', '" domain="')
+                verbs.append(word)
+    verbs = Counter(verbs)
+    verbs=verbs.most_common(5)
+    return verbs
 
                    
 def do_this():
     choice=""
     way=""
+    document=""
+    sentences=[]
+    print("1")
     while choice!="ORDNER" and choice!="DOKUMENT":
         choice=input("ORDNER oder DOKUMENT auswerten?")
         if choice == "ORDNER":
             way=input("Geben Sie den Dateipfad an:")
-            all_text = open_folder(way)
+            all_text, sentences = open_folder(way)
+            document = doc(all_text)
         elif choice == "DOKUMENT":
             way=input("Geben Sie den Dateipfad an:")
-            print(way)
-            all_text=open_file(way)
+            #print(way)
+            all_text, sentences=open_file(way)
+            document = doc(all_text)
         else:
             print("Bitte treffen Sie eine gültige Wahl.")
             continue
+    print("2")
+    print(sentences)
     print("3")
-    document = doc(all_text)
-    print("4")
     
     while choice !="NEIN" and choice !="JA":
         choice=input("Möchten Sie Ihre Ergebnisse abspeichern? JA NEIN")
@@ -194,9 +226,12 @@ def do_this():
     #counterqs=counter_qslink(document)
     #print(counterqs)
     #sentence_length(document)
-    prepositions(way, document)
+    #prep=prepositions(sentences, document)
+    #print(prep)
+    #motions=motion(sentences,document)
+    #print(motions)
     print("#################################################################################")
-    print(document)
+    #print(document)
     
             
     
@@ -206,8 +241,4 @@ def do_this():
 #F:\Uni\14_SoSe_21\Praktikum Text2Scene\Output
 
 do_this()
-
-#which links with which preposition: put all s in dict with text; make list for qs and olink with s_id; put corresponding value from dict in list, counter
-
-#top 5 motion verbs and how often
-
+#sentenizer als 2. Funktion oderlisten split füer beide arten einfügen
