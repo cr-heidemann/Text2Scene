@@ -186,6 +186,90 @@ def motion(sentences, liste):
     verbs=verbs.most_common(5)
     return verbs
 
+def get_nodes(sentences):
+    nodes=[]
+    lines=sentences
+    for doc in range(len(lines)):
+        for line in range(len(lines[doc])):
+            if "<PLACE" in lines[doc][line] or "<SPATIAL_ENTITY" in lines[doc][line]:
+                node_id=extract(lines, doc, line, ' id="', '" start="')
+                label=extract(lines, doc, line, 'text="', '" type="')
+                nodes.append((node_id, label))   
+            elif "<PATH" in lines[doc][line]:
+                node_id=extract(lines, doc, line, ' id="', '" start="')  
+                label=extract(lines, doc, line, 'text="', '" beginID="')
+                nodes.append((node_id, label))
+            elif "<NONMOTION_EVENT" in lines[doc][line]:
+                node_id=extract(lines, doc, line, ' id="', '" start="')  
+                label=extract(lines, doc, line, 'text="', '" latLong="')
+                nodes.append((node_id, label))
+            elif "<LOCATION" in lines[doc][line]:
+                continue
+    return nodes
+
+def get_edges(sentences):
+    edges=[]
+    lines=sentences
+    for doc in range(len(lines)):
+        for line in range(len(lines[doc])):
+            if "<QSLINK" in lines[doc][line] or "<OLINK" in lines[doc][line]:
+                edge_a = extract(lines, doc, line, ' fromID="', '" fromText=')
+                edge_b = extract(lines, doc, line, ' toID="', '" toText="')
+                label = extract(lines, doc, line, 'relType="', '" trajector="')
+                edges.append((edge_a, edge_b, label))
+    return edges
+
+def get_metalink(nodes, edges, sentences):
+    lines=sentences  
+    metalinks=[]
+    
+    for doc in range(len(lines)):
+        for line in range(len(lines[doc])):
+            if "<METALINK" in lines[doc][line] and "COREFERENCE" in lines[doc][line]:
+                id_1=extract(lines, doc, line, 'fromID="', '" fromText="')
+                id_2=extract(lines, doc, line, 'toID="', '" toText="')
+                metalinks.append((id_1, id_2))
+    print(metalinks)
+    for(i,j) in metalinks:
+        counter=0
+        for(k,l) in nodes:
+            if i==k:
+                nodes[counter]=(j,l)
+                counter+=1
+            else:
+                counter+=1
+        counter=0
+        for(k,l,m) in edges:
+            if i==k:
+                edges[counter]=(j,l,m)
+                counter+=1
+            elif i==l:
+                edges[counter]=(k,j,m)
+                counter+=1                
+            else:
+                counter+=1
+    return nodes, edges
+        
+def make_graph(path, sentences):
+    #Node: PLACE, LOCATION, SPATIAL_ENTITY, NONMOTION_EVENT, PATH; Label: Text
+    #Edge: OLINKS  QSLINKS, Label: relType
+    #Merge METALINK
+    nodes=get_nodes(sentences)
+    edges=get_edges(sentences)
+    f = open(path + "\\graph.dot", "w", encoding="utf8")
+    f.write("digraph graphname" + "\n" + "{" + "\n")
+    
+    nodes, edges = get_metalink(nodes, edges, sentences)
+    
+    for (i,j) in nodes:
+        # node [label="xxx"];
+        f.write(str(i) + ' [label="' + str(j) + '"];' + "\n")
+    for(i,j, k) in edges:
+        # a -> b [label="xxx"];
+        f.write(str(i) + ' -> ' + str(j) + ' [label="' +  str(k) + '"];' + '\n')
+    f.write("}")
+    f.close
+    return
                    
 def do_this():
     choice=""
@@ -207,31 +291,29 @@ def do_this():
         else:
             print("Bitte treffen Sie eine gültige Wahl.")
             continue
-    print("2")
-    print(sentences)
-    print("3")
     
     while choice !="NEIN" and choice !="JA":
-        choice=input("Möchten Sie Ihre Ergebnisse abspeichern? JA NEIN")
+        choice=input("Möchten Sie Ihre Ergebnisse abspeichern(Tokendatei, POS Datei, Graphdatei)? JA NEIN")
         if choice=="JA":
             path=input("Geben Sie einen Speicherordner an:")
             save_tokens(path, document)
             save_pos(path, document)
             save_sentences(path,document)
+            make_graph(path, sentences)
+
     
-    #counterpos=counter_pos(document)
-    #print(counterpos)
-    #counterios=counter_ios(document)
-    #print(counterios)
-    #counterqs=counter_qslink(document)
-    #print(counterqs)
-    #sentence_length(document)
-    #prep=prepositions(sentences, document)
-    #print(prep)
-    #motions=motion(sentences,document)
-    #print(motions)
-    print("#################################################################################")
-    #print(document)
+    counterpos=counter_pos(document)
+    print(counterpos)
+    counterios=counter_ios(document)
+    print(counterios)
+    counterqs=counter_qslink(document)
+    print(counterqs)
+    sentence_length(document)
+    prep=prepositions(sentences, document)
+    print(prep)
+    motions=motion(sentences,document)
+    print(motions)
+
     
             
     
@@ -241,4 +323,4 @@ def do_this():
 #F:\Uni\14_SoSe_21\Praktikum Text2Scene\Output
 
 do_this()
-#sentenizer als 2. Funktion oderlisten split füer beide arten einfügen
+
