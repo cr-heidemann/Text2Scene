@@ -319,8 +319,6 @@ def do_this():
     
     
 
-# F:\Uni\14_SoSe_21\Praktikum Text2Scene\Traning\ANC\WhereToJapan\
-#F:\Uni\14_SoSe_21\Praktikum Text2Scene\Output
 
 do_this()
 
